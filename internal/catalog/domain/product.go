@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+
 	"github.com/Rhymond/go-money"
 	"github.com/google/uuid"
 )
@@ -13,6 +15,14 @@ type Product struct {
 	Price       money.Money
 	categoryIDs map[CategoryID]struct{}
 	Attributes  *AttributeMap // attributes will be inherited to all variants
+}
+
+type ProductRepository interface {
+	Save(ctx context.Context, product *Product) error
+	Get(ctx context.Context, id ProductID) (*Product, error)
+	List(ctx context.Context) ([]Product, error)
+	ListByCategory(ctx context.Context, categoryID CategoryID) ([]Product, error)
+	Delete(ctx context.Context, id ProductID) error
 }
 
 func NewProduct(name string, description string, price money.Money) *Product {

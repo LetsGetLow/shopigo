@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type CategoryID uuid.UUID
 
@@ -9,6 +13,14 @@ type Category struct {
 	Name        string
 	Description string
 	ParentID    *CategoryID
+}
+
+type CategoryRepository interface {
+	Save(ctx context.Context, category *Category) error
+	Get(ctx context.Context, id CategoryID) (*Category, error)
+	List(ctx context.Context) ([]Category, error)
+	ListByParent(ctx context.Context, parentID CategoryID) ([]Category, error)
+	Delete(ctx context.Context, id CategoryID) error
 }
 
 func NewCategory(name string, description string) *Category {

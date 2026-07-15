@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type VariantID uuid.UUID
 type Variant struct {
@@ -8,6 +12,13 @@ type Variant struct {
 	ProductID  ProductID
 	SKU        string
 	Attributes *AttributeMap
+}
+
+type VariantRepository interface {
+	Save(ctx context.Context, variant *Variant) error
+	Get(ctx context.Context, id VariantID) (*Variant, error)
+	ListByProduct(ctx context.Context, productID ProductID) ([]Variant, error)
+	Delete(ctx context.Context, id VariantID) error
 }
 
 func NewVariant(productID ProductID, sku string) *Variant {
