@@ -13,8 +13,14 @@ resources, products, or services.
 ## Product Management
 - The Admin can create a Product.
 - The Admin can edit an existing Product to update its details, such as name, description, price.
-- The Admin can delete a Product, which will remove it from the catalog and any associated categories.
+- The Admin can delete a Product, which will remove it from the catalog and any associated categories and variants.
 - The Admin can assign a Product to one or more Categories to ensure it is properly organized within the catalog.
 - The Admin can unassign a Product from a Category, which will remove the association but keep the Product in the catalog.
 - The Admin can view a list of all Products, including their details and associated Categories.
 - The Customer can browse Products by Category to find items of interest.
+
+## Variant Management
+- The Admin can create a Variant for a Product, allowing for different options such as size, color, or configuration.
+- The Admin can edit an existing Variant to update its details, such as name, price, or availability.
+- The Admin can delete a Variant, which will remove it from the Product and any associated options.
+- The Admin can assign a Variant to a Product, ensuring that customers can select from the available options.
