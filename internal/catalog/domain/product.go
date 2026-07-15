@@ -12,6 +12,7 @@ type Product struct {
 	Description string
 	Price       money.Money
 	categoryIDs map[CategoryID]struct{}
+	Attributes  *AttributeMap // attributes will be inherited to all variants
 }
 
 func NewProduct(name string, description string, price money.Money) *Product {
@@ -21,6 +22,7 @@ func NewProduct(name string, description string, price money.Money) *Product {
 		Description: description,
 		Price:       price,
 		categoryIDs: make(map[CategoryID]struct{}),
+		Attributes:  NewAttributeMap(),
 	}
 }
 
