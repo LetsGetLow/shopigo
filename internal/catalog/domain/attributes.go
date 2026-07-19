@@ -1,5 +1,7 @@
 package domain
 
+import "maps"
+
 type AttributeMap struct {
 	attributes map[string]string
 }
@@ -25,8 +27,6 @@ func (s *AttributeMap) Get(key string) (value string, exists bool) {
 
 func (s *AttributeMap) Attributes() map[string]string {
 	clone := make(map[string]string, len(s.attributes))
-	for key, value := range s.attributes {
-		clone[key] = value
-	}
+	maps.Copy(clone, s.attributes)
 	return clone
 }
