@@ -21,6 +21,7 @@ type CategoryRepository interface {
 	List(ctx context.Context) ([]Category, error)
 	ListByParent(ctx context.Context, parentID CategoryID) ([]Category, error)
 	Delete(ctx context.Context, id CategoryID) error
+	Close() error
 }
 
 func NewCategory(name string, description string) *Category {
