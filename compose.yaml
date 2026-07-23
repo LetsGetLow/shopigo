@@ -1,0 +1,15 @@
+services:
+    db:
+        image: postgres:13
+        container_name: shopigo_db
+        environment:
+          POSTGRES_USER: ${POSTGRES_USER:-shopigo}
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+          POSTGRES_DB: ${POSTGRES_DB:-shopigo}
+        ports:
+        - "${POSTGRES_PORT:-15432}:5432"
+        volumes:
+        - db_data:/var/lib/postgresql/data
+
+volumes:
+    db_data:
