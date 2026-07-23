@@ -2,24 +2,27 @@ package domain
 
 import (
 	"context"
+	"shopigo/internal/shared/domain"
 
 	"github.com/google/uuid"
 )
 
 type CategoryID uuid.UUID
+type ParentCategoryID uuid.UUID
 
 type Category struct {
 	ID          CategoryID
 	Name        string
 	Description string
-	ParentID    *CategoryID
+	ParentID    *ParentCategoryID
+	domain.Audit
 }
 
 type CategoryRepository interface {
 	Save(ctx context.Context, category *Category) error
 	Get(ctx context.Context, id CategoryID) (*Category, error)
 	List(ctx context.Context) ([]Category, error)
-	ListByParent(ctx context.Context, parentID CategoryID) ([]Category, error)
+	ListByParent(ctx context.Context, id ParentCategoryID) ([]Category, error)
 	Delete(ctx context.Context, id CategoryID) error
 	Close() error
 }
@@ -33,7 +36,7 @@ func NewCategory(name string, description string) *Category {
 	}
 }
 
-func (c *Category) MoveInto(newParentID CategoryID) {
+func (c *Category) MoveInto(newParentID ParentCategoryID) {
 	c.ParentID = &newParentID
 }
 

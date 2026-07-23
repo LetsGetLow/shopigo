@@ -28,7 +28,7 @@ func TestNewCategoryAsRoot(t *testing.T) {
 
 func TestMoveCategory(t *testing.T) {
 	category := NewCategory("Phones", "Phone products")
-	newParentID := CategoryID(uuid.New())
+	newParentID := ParentCategoryID(uuid.New())
 
 	category.MoveInto(newParentID)
 
@@ -42,10 +42,10 @@ func TestMoveCategory(t *testing.T) {
 
 func TestMoveCategoryIntoParent(t *testing.T) {
 	category := NewCategory("Accessories", "Accessories")
-	oldParentID := CategoryID(uuid.New())
+	oldParentID := ParentCategoryID(uuid.New())
 	category.MoveInto(oldParentID)
 
-	newParentID := CategoryID(uuid.New())
+	newParentID := ParentCategoryID(uuid.New())
 	category.MoveInto(newParentID)
 
 	if *category.ParentID != newParentID {
@@ -55,7 +55,7 @@ func TestMoveCategoryIntoParent(t *testing.T) {
 
 func TestMakeRootCategory(t *testing.T) {
 	category := NewCategory("Tablets", "Tablet products")
-	parentID := CategoryID(uuid.New())
+	parentID := ParentCategoryID(uuid.New())
 	category.MoveInto(parentID)
 
 	if category.IsRoot() {
