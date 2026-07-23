@@ -1,10 +1,10 @@
-package infra
+package catalog
 
 import (
 	"context"
 	"fmt"
-	"shopigo/internal/catalog/domain"
-	sharedDomain "shopigo/internal/shared/domain"
+	domain "shopigo/internal/domain/catalog"
+	shared "shopigo/internal/domain/shared"
 	"time"
 
 	"github.com/google/uuid"
@@ -83,10 +83,10 @@ func (r *PostgresCategoryRepository) Get(ctx context.Context, id domain.Category
 		Name:        row.Name,
 		Description: row.Description,
 		ParentID:    (*domain.ParentCategoryID)(row.ParentID),
-		Audit: sharedDomain.NewAudit(
-			(*sharedDomain.CreatedAt)(row.CreatedAt),
-			(*sharedDomain.UpdatedAt)(row.UpdatedAt),
-			(*sharedDomain.DeletedAt)(row.DeletedAt),
+		Audit: shared.NewAudit(
+			(*shared.CreatedAt)(row.CreatedAt),
+			(*shared.UpdatedAt)(row.UpdatedAt),
+			(*shared.DeletedAt)(row.DeletedAt),
 		),
 	}
 	return category, nil

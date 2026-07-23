@@ -1,8 +1,8 @@
-package domain
+package catalog
 
 import (
 	"context"
-	"shopigo/internal/shared/domain"
+	shared "shopigo/internal/domain/shared"
 
 	"github.com/google/uuid"
 )
@@ -15,7 +15,7 @@ type Category struct {
 	Name        string
 	Description string
 	ParentID    *ParentCategoryID
-	domain.Audit
+	shared.Audit
 }
 
 type CategoryRepository interface {
