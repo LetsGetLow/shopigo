@@ -10,6 +10,14 @@ import (
 type CategoryID uuid.UUID
 type ParentCategoryID uuid.UUID
 
+func ParentCategoryIDFromNullUUID(id uuid.NullUUID) *ParentCategoryID {
+	if !id.Valid {
+		return nil
+	}
+	parentID := ParentCategoryID(id.UUID)
+	return &parentID
+}
+
 type Category struct {
 	ID          CategoryID
 	Name        string
@@ -19,11 +27,11 @@ type Category struct {
 }
 
 type CategoryRepository interface {
-	Save(ctx context.Context, category *Category) error
+	Save(ctx context.Context, category Category, user shared.ActorID) error
 	Get(ctx context.Context, id CategoryID) (*Category, error)
 	List(ctx context.Context) ([]Category, error)
 	ListByParent(ctx context.Context, id ParentCategoryID) ([]Category, error)
-	Delete(ctx context.Context, id CategoryID) error
+	Delete(ctx context.Context, id CategoryID, user shared.ActorID) error
 	Close() error
 }
 

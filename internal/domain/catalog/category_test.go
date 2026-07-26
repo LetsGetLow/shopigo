@@ -6,6 +6,25 @@ import (
 	"github.com/google/uuid"
 )
 
+func TestParentCategoryIDFromNullUUID(t *testing.T) {
+	t.Run("returns nil for invalid uuid", func(t *testing.T) {
+		if got := ParentCategoryIDFromNullUUID(uuid.NullUUID{}); got != nil {
+			t.Fatalf("expected nil, got %v", got)
+		}
+	})
+
+	t.Run("returns parent id for valid uuid", func(t *testing.T) {
+		parentUUID := uuid.New()
+		got := ParentCategoryIDFromNullUUID(uuid.NullUUID{UUID: parentUUID, Valid: true})
+		if got == nil {
+			t.Fatal("expected non-nil parent id")
+		}
+		if uuid.UUID(*got) != parentUUID {
+			t.Fatalf("expected %v, got %v", parentUUID, *got)
+		}
+	})
+}
+
 func TestNewCategoryAsRoot(t *testing.T) {
 	name := "Electronics"
 	description := "Electronic products"
@@ -22,7 +41,7 @@ func TestNewCategoryAsRoot(t *testing.T) {
 		t.Error("expected nil parent for root category")
 	}
 	if !category.IsRoot() {
-		t.Error("expected non-nil category ID")
+		t.Error("expected root category")
 	}
 }
 
