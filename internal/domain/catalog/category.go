@@ -18,21 +18,28 @@ func ParentCategoryIDFromNullUUID(id uuid.NullUUID) *ParentCategoryID {
 	return &parentID
 }
 
+// CategoryRepository defines persistence operations for categories.
+type CategoryRepository interface {
+	// Save creates or updates a category and records the acting user.
+	Save(ctx context.Context, category Category, user shared.ActorID) error
+	// Get returns a category by ID.
+	Get(ctx context.Context, id CategoryID) (*Category, error)
+	// List returns all categories.
+	List(ctx context.Context) ([]Category, error)
+	// ListByParent returns all categories with the given parent ID.
+	ListByParent(ctx context.Context, id ParentCategoryID) ([]Category, error)
+	// Delete marks a category as deleted and records the acting user.
+	Delete(ctx context.Context, id CategoryID, user shared.ActorID) error
+	// Close releases any repository resources.
+	Close() error
+}
+
 type Category struct {
 	ID          CategoryID
 	Name        string
 	Description string
 	ParentID    *ParentCategoryID
 	shared.Audit
-}
-
-type CategoryRepository interface {
-	Save(ctx context.Context, category Category, user shared.ActorID) error
-	Get(ctx context.Context, id CategoryID) (*Category, error)
-	List(ctx context.Context) ([]Category, error)
-	ListByParent(ctx context.Context, id ParentCategoryID) ([]Category, error)
-	Delete(ctx context.Context, id CategoryID, user shared.ActorID) error
-	Close() error
 }
 
 func NewCategory(name string, description string) *Category {
@@ -44,7 +51,7 @@ func NewCategory(name string, description string) *Category {
 	}
 }
 
-func (c *Category) MoveInto(newParentID ParentCategoryID) {
+func (c *Category) MoveToParent(newParentID ParentCategoryID) {
 	c.ParentID = &newParentID
 }
 

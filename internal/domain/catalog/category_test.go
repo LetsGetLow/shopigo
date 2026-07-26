@@ -49,7 +49,7 @@ func TestMoveCategory(t *testing.T) {
 	category := NewCategory("Phones", "Phone products")
 	newParentID := ParentCategoryID(uuid.New())
 
-	category.MoveInto(newParentID)
+	category.MoveToParent(newParentID)
 
 	if category.ParentID == nil {
 		t.Error("expected non-nil parent after move")
@@ -62,10 +62,10 @@ func TestMoveCategory(t *testing.T) {
 func TestMoveCategoryIntoParent(t *testing.T) {
 	category := NewCategory("Accessories", "Accessories")
 	oldParentID := ParentCategoryID(uuid.New())
-	category.MoveInto(oldParentID)
+	category.MoveToParent(oldParentID)
 
 	newParentID := ParentCategoryID(uuid.New())
-	category.MoveInto(newParentID)
+	category.MoveToParent(newParentID)
 
 	if *category.ParentID != newParentID {
 		t.Errorf("expected new parent %v, got %v", newParentID, *category.ParentID)
@@ -75,7 +75,7 @@ func TestMoveCategoryIntoParent(t *testing.T) {
 func TestMakeRootCategory(t *testing.T) {
 	category := NewCategory("Tablets", "Tablet products")
 	parentID := ParentCategoryID(uuid.New())
-	category.MoveInto(parentID)
+	category.MoveToParent(parentID)
 
 	if category.IsRoot() {
 		t.Error("expected non-root category")
