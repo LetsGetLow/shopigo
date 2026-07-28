@@ -26,8 +26,8 @@ type CategoryRepository interface {
 	Get(ctx context.Context, id CategoryID) (*Category, error)
 	// List returns all categories.
 	List(ctx context.Context) ([]Category, error)
-	// ListByParent returns all categories with the given parent ID.
-	ListByParent(ctx context.Context, id ParentCategoryID) ([]Category, error)
+	// ListByParent returns all categories with the given parent ID. If parent ID is nil, it returns all root categories.
+	ListByParent(ctx context.Context, id *ParentCategoryID) ([]Category, error)
 	// Delete marks a category as deleted and records the acting user.
 	Delete(ctx context.Context, id CategoryID, user shared.ActorID) error
 	// Close releases any repository resources.

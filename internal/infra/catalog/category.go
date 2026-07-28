@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	domain "shopigo/internal/domain/catalog"
 	shared "shopigo/internal/domain/shared"
@@ -12,15 +13,51 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const categoryTable = "catalog_categories"
+
 type categoryRow struct {
-	ID          uuid.UUID  `db:"category_id"`
-	ParentID    *uuid.UUID `db:"parent_id"`
-	Name        string     `db:"name"`
-	Description string     `db:"description"`
-	CreatedAt   *time.Time `db:"created_at"`
-	UpdatedAt   *time.Time `db:"updated_at"`
-	DeletedAt   *time.Time `db:"deleted_at"`
-	IsDeleted   bool       `db:"is_deleted"`
+	id          uuid.UUID
+	parentID    uuid.NullUUID
+	name        string
+	description string
+	createdAt   time.Time
+	createdBy   uuid.UUID
+	updatedAt   sql.NullTime
+	updatedBy   uuid.NullUUID
+	deletedAt   sql.NullTime
+	deletedBy   uuid.NullUUID
+}
+
+func (r categoryRow) toDomain() *domain.Category {
+	return &domain.Category{
+		ID:          domain.CategoryID(r.id),
+		Name:        r.name,
+		Description: r.description,
+		ParentID:    domain.ParentCategoryIDFromNullUUID(r.parentID),
+		Audit: shared.NewAudit(
+			shared.CreatedAt(r.createdAt),
+			shared.ActorID(r.createdBy),
+			shared.UpdatedAtFromNullTime(r.updatedAt),
+			shared.ActorIDFromNullUUID(r.updatedBy),
+			shared.DeletedAtFromNullTime(r.deletedAt),
+			shared.ActorIDFromNullUUID(r.deletedBy),
+		),
+	}
+}
+
+func categoryRowFromDomain(category domain.Category, user shared.ActorID) categoryRow {
+	row := categoryRow{
+		id:          uuid.UUID(category.ID),
+		name:        category.Name,
+		description: category.Description,
+		createdBy:   uuid.UUID(user),
+	}
+
+	if category.ParentID != nil {
+		row.parentID = uuid.NullUUID{UUID: uuid.UUID(*category.ParentID), Valid: true}
+	}
+
+	return row
 }
 
 type PostgresCategoryRepository struct {
@@ -45,23 +82,24 @@ func NewPostgresCategoryRepository(ctx context.Context, connectionString string)
 	return &PostgresCategoryRepository{db: db}, nil
 }
 
-func (r *PostgresCategoryRepository) Save(ctx context.Context, category *domain.Category) error {
-	query := `
-		INSERT INTO categories (category_id, name, description, parent_id, created_at, is_deleted)
-		VALUES ($1, $2, $3, $4, $5, false)
-		ON CONFLICT (category_id) DO UPDATE SET
-			name = EXCLUDED.name,
-			description = EXCLUDED.description,
-			parent_id = EXCLUDED.parent_id,
-			updated_at = EXCLUDED.created_at
-	`
+func (r *PostgresCategoryRepository) Save(ctx context.Context, category domain.Category, user shared.ActorID) error {
+	row := categoryRowFromDomain(category, user)
+	query := `INSERT INTO ` + categoryTable + ` (category_id, name, description, parent_id, created_at, created_by)
+VALUES ($1, $2, $3, $4, NOW(), $5)
+ON CONFLICT (category_id) DO UPDATE SET
+	name = EXCLUDED.name,
+	description = EXCLUDED.description,
+	parent_id = EXCLUDED.parent_id,
+	updated_at = NOW(),
+	updated_by = EXCLUDED.created_by
+`
 
 	_, err := r.db.ExecContext(ctx, query,
-		uuid.UUID(category.ID),
-		category.Name,
-		category.Description,
-		(*uuid.UUID)(category.ParentID),
-		time.Now(),
+		row.id,
+		row.name,
+		row.description,
+		row.parentID,
+		row.createdBy,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save category: %w", err)
@@ -71,36 +109,43 @@ func (r *PostgresCategoryRepository) Save(ctx context.Context, category *domain.
 }
 
 func (r *PostgresCategoryRepository) Get(ctx context.Context, id domain.CategoryID) (*domain.Category, error) {
-	query := "SELECT category_id, name, description, parent_id FROM categories WHERE category_id = $1 AND is_deleted = false"
+	query := `SELECT category_id, name, description, parent_id, created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
+FROM ` + categoryTable + ` WHERE category_id = $1 AND deleted_at IS NULL`
 	var row categoryRow
-	err := r.db.GetContext(ctx, &row, query, uuid.UUID(id))
+	err := r.db.QueryRowContext(ctx, query, uuid.UUID(id)).Scan(
+		&row.id,
+		&row.name,
+		&row.description,
+		&row.parentID,
+		&row.createdAt,
+		&row.createdBy,
+		&row.updatedAt,
+		&row.updatedBy,
+		&row.deletedAt,
+		&row.deletedBy,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get category: %w", err)
 	}
 
-	category := &domain.Category{
-		ID:          domain.CategoryID(row.ID),
-		Name:        row.Name,
-		Description: row.Description,
-		ParentID:    (*domain.ParentCategoryID)(row.ParentID),
-		Audit: shared.NewAudit(
-			(*shared.CreatedAt)(row.CreatedAt),
-			(*shared.UpdatedAt)(row.UpdatedAt),
-			(*shared.DeletedAt)(row.DeletedAt),
-		),
-	}
-	return category, nil
+	return row.toDomain(), nil
 }
 
 func (r *PostgresCategoryRepository) List(ctx context.Context) ([]domain.Category, error) {
 	return nil, nil
 }
 
-func (r *PostgresCategoryRepository) ListByParent(ctx context.Context, parentID domain.CategoryID) ([]domain.Category, error) {
+func (r *PostgresCategoryRepository) ListByParent(ctx context.Context, id *domain.ParentCategoryID) ([]domain.Category, error) {
 	return nil, nil
 }
 
-func (r *PostgresCategoryRepository) Delete(ctx context.Context, id domain.CategoryID) error {
+func (r *PostgresCategoryRepository) Delete(ctx context.Context, id domain.CategoryID, user shared.ActorID) error {
+	// TODO: add support to delete the whole tree
+	query := "UPDATE " + categoryTable + " SET deleted_at = $1, deleted_by = $2 WHERE category_id = $3"
+	_, err := r.db.ExecContext(ctx, query, time.Now(), uuid.UUID(user), uuid.UUID(id))
+	if err != nil {
+		return fmt.Errorf("failed to delete category: %w", err)
+	}
 	return nil
 }
 
