@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	appCatalog "shopigo/internal/app/catalog"
 	infraCatalog "shopigo/internal/infra/catalog"
 	infraShared "shopigo/internal/infra/shared"
@@ -20,6 +22,11 @@ import (
 const defaultHTTPAddr = ":8089"
 
 func main() {
+	err := godotenv.Load() // loads .env into process env
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
