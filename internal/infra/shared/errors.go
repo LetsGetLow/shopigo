@@ -23,6 +23,7 @@ func (e SystemError) Error() string {
 	return fmt.Sprintf("system error: %s", e.Message)
 }
 
+// FileSystemError is used for all file system related errors e.g. reading/writing files
 type FileSystemError struct {
 	Message string
 }
@@ -31,10 +32,11 @@ func (e FileSystemError) Error() string {
 	return fmt.Sprintf("file system error: %s", e.Message)
 }
 
+// NotFoundError is an error type used when a required resource is not found, e.g., a file or DB row.
 type NotFoundError struct {
 	Message string
 }
 
 func (e NotFoundError) Error() string {
-	return fmt.Sprintf("migration error: %s", e.Message)
+	return fmt.Sprintf("not found error: %s", e.Message)
 }
