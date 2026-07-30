@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"shopigo/internal/infra/shared"
 
 	appcatalog "shopigo/internal/app/catalog"
 	domainshared "shopigo/internal/domain/shared"
-	infraCatalog "shopigo/internal/infra/catalog"
 
 	"github.com/google/uuid"
 )
@@ -168,9 +166,9 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func writeHandlerError(w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, infraCatalog.ErrCategoryNotFound):
+	case errors.Is(err, appcatalog.ErrCategoryNotFound):
 		http.Error(w, "category not found", http.StatusNotFound)
-	case errors.Is(err, shared.ErrOSOperation) || errors.Is(err, shared.ErrSqlExecutionFailed) || errors.Is(err, shared.ErrFileSystem) || errors.Is(err, shared.ErrNotFound) || errors.As(err, &shared.ConnectionFailed{}):
+	case errors.Is(err, appcatalog.ErrCategorySaveFailed), errors.Is(err, appcatalog.ErrCategoryDeleteFailed):
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	default:
 		http.Error(w, err.Error(), http.StatusBadRequest)

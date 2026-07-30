@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
+	app "shopigo/internal/app/catalog"
 	domain "shopigo/internal/domain/catalog"
 	domainShared "shopigo/internal/domain/shared"
 	"shopigo/internal/infra/shared"
@@ -17,22 +17,18 @@ import (
 
 const categoryTable = "catalog_categories"
 
-var ErrCategorySaveFailed = errors.New("category save failed")
+var ErrCategorySaveFailed = app.ErrCategorySaveFailed
 
-func NewCategorySaveFailedError(err error) error {
-	return fmt.Errorf("%w: %v", ErrCategorySaveFailed, err)
-}
+func NewCategorySaveFailedError(err error) error { return app.NewCategorySaveFailedError(err) }
 
-var ErrCategoryNotFound = errors.New("category not found")
+var ErrCategoryNotFound = app.ErrCategoryNotFound
 
-func NewCategoryNotFoundError(err error) error {
-	return fmt.Errorf("%w: %v", ErrCategoryNotFound, err)
-}
+func NewCategoryNotFoundError(err error) error { return app.NewCategoryNotFoundError(err) }
 
-var ErrCategoryDeleteFailed = errors.New("category delete failed")
+var ErrCategoryDeleteFailed = app.ErrCategoryDeleteFailed
 
 func NewCategoryDeleteFailedError(err error) error {
-	return fmt.Errorf("%w: %v", ErrCategoryDeleteFailed, err)
+	return app.NewCategoryDeleteFailedError(err)
 }
 
 type categoryRow struct {
