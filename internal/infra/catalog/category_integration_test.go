@@ -22,6 +22,8 @@ import (
 
 var testDB *sqlx.DB
 
+const categoryTable = "catalog_categories"
+
 // TODO: write better tests
 type categoryAuditRow struct {
 	createdAt time.Time
@@ -91,7 +93,7 @@ func loadCategoryAuditRow(t *testing.T, id catalog.CategoryID) categoryAuditRow 
 	var row categoryAuditRow
 	err := testDB.QueryRow(
 		`SELECT created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
-		 FROM catalog_categories
+		 FROM `+categoryTable+`
 		 WHERE category_id = $1`,
 		uuid.UUID(id),
 	).Scan(
