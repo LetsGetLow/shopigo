@@ -4,39 +4,39 @@ import (
 	"fmt"
 )
 
-// ConnectionFailedError is used when a connection to a service fails, e.g., database connection.
-type ConnectionFailedError struct {
+// ConnectionFailed is used when a connection to a service fails, e.g., database connection.
+type ConnectionFailed struct {
 	ConnectionName string
-	Message        string
+	Err            error
 }
 
-func (e ConnectionFailedError) Error() string {
-	return fmt.Sprintf("failed to connect to %s:\n%s", e.ConnectionName, e.Message)
+func (e ConnectionFailed) Error() string {
+	return fmt.Sprintf("failed to connect to %s: %s", e.ConnectionName, e.Err.Error())
 }
 
-// SystemError is used for OS related Errors e.g. getting current working directory
-type SystemError struct {
+// OSOperation is used for OS related errors, e.g., getting current working directory.
+type OSOperation struct {
+	Err error
+}
+
+func (e OSOperation) Error() string {
+	return fmt.Sprintf("os operation error: %s", e.Err.Error())
+}
+
+// FileSystem is used for all file system related errors, e.g., reading/writing files.
+type FileSystem struct {
+	Err error
+}
+
+func (e FileSystem) Error() string {
+	return fmt.Sprintf("file system error: %s", e.Err.Error())
+}
+
+// NotFound is an error type used when a required resource is not found, e.g., a file or DB row.
+type NotFound struct {
 	Message string
 }
 
-func (e SystemError) Error() string {
-	return fmt.Sprintf("system error: %s", e.Message)
-}
-
-// FileSystemError is used for all file system related errors e.g. reading/writing files
-type FileSystemError struct {
-	Message string
-}
-
-func (e FileSystemError) Error() string {
-	return fmt.Sprintf("file system error: %s", e.Message)
-}
-
-// NotFoundError is an error type used when a required resource is not found, e.g., a file or DB row.
-type NotFoundError struct {
-	Message string
-}
-
-func (e NotFoundError) Error() string {
-	return fmt.Sprintf("not found error: %s", e.Message)
+func (e NotFound) Error() string {
+	return fmt.Sprintf("not found: %s", e.Message)
 }
