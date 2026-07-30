@@ -27,8 +27,14 @@ func NewCategoryNotFoundError(err error) error { return app.NewCategoryNotFoundE
 
 var ErrCategoryDeleteFailed = app.ErrCategoryDeleteFailed
 
+var ErrCategoryListFailed = app.ErrCategoryListFailed
+
 func NewCategoryDeleteFailedError(err error) error {
 	return app.NewCategoryDeleteFailedError(err)
+}
+
+func NewCategoryListFailedError(err error) error {
+	return app.NewCategoryListFailedError(err)
 }
 
 type categoryRow struct {
@@ -157,11 +163,34 @@ FROM ` + categoryTable + ` WHERE category_id = $1 AND deleted_at IS NULL`
 }
 
 func (r *PostgresCategoryRepository) List(ctx context.Context) ([]domain.Category, error) {
-	return nil, nil
+	query := `SELECT category_id, name, description, parent_id, created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
+FROM ` + categoryTable + ` WHERE deleted_at IS NULL ORDER BY name ASC`
+
+	rows, err := r.db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, NewCategoryListFailedError(err)
+	}
+	defer rows.Close()
+
+	return scanCategoryRows(rows)
 }
 
 func (r *PostgresCategoryRepository) ListByParent(ctx context.Context, id *domain.ParentCategoryID) ([]domain.Category, error) {
-	return nil, nil
+	query := `SELECT category_id, name, description, parent_id, created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
+FROM ` + categoryTable + ` WHERE deleted_at IS NULL AND parent_id IS NOT DISTINCT FROM $1 ORDER BY name ASC`
+
+	var parentID any
+	if id != nil {
+		parentID = uuid.UUID(*id)
+	}
+
+	rows, err := r.db.QueryxContext(ctx, query, parentID)
+	if err != nil {
+		return nil, NewCategoryListFailedError(err)
+	}
+	defer rows.Close()
+
+	return scanCategoryRows(rows)
 }
 
 func (r *PostgresCategoryRepository) Delete(ctx context.Context, id domain.CategoryID, user domainShared.ActorID) error {
@@ -176,4 +205,33 @@ func (r *PostgresCategoryRepository) Delete(ctx context.Context, id domain.Categ
 
 func (r *PostgresCategoryRepository) Close() error {
 	return r.db.Close()
+}
+
+func scanCategoryRows(rows *sqlx.Rows) ([]domain.Category, error) {
+	categories := make([]domain.Category, 0)
+
+	for rows.Next() {
+		var row categoryRow
+		if err := rows.Scan(
+			&row.id,
+			&row.name,
+			&row.description,
+			&row.parentID,
+			&row.createdAt,
+			&row.createdBy,
+			&row.updatedAt,
+			&row.updatedBy,
+			&row.deletedAt,
+			&row.deletedBy,
+		); err != nil {
+			return nil, shared.NewSqlExecutionFailedError(err)
+		}
+		categories = append(categories, *row.toDomain())
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, shared.NewSqlExecutionFailedError(err)
+	}
+
+	return categories, nil
 }

@@ -88,6 +88,7 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 
 func TestCategoryHandler_GetUpdateDeleteCategory(t *testing.T) {
 	parentID := uuid.NewString()
+	getID := uuid.NewString()
 	svc := &fakeCategoryService{
 		updateFn: func(ctx context.Context, req appcatalog.UpdateCategoryRequest, user domainshared.ActorID) (appcatalog.UpdateCategoryResponse, error) {
 			return appcatalog.UpdateCategoryResponse{
@@ -109,11 +110,18 @@ func TestCategoryHandler_GetUpdateDeleteCategory(t *testing.T) {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
-	getReq := httptest.NewRequest(http.MethodGet, "/categories/abc", nil)
+	getReq := httptest.NewRequest(http.MethodGet, "/categories/"+getID, nil)
 	getRec := httptest.NewRecorder()
 	mux.ServeHTTP(getRec, getReq)
 	if getRec.Code != http.StatusOK {
 		t.Fatalf("expected get status 200, got %d", getRec.Code)
+	}
+	var got appcatalog.CategoryResponse
+	if err := json.NewDecoder(getRec.Body).Decode(&got); err != nil {
+		t.Fatalf("failed to decode get response: %v", err)
+	}
+	if got.ID != getID {
+		t.Fatalf("expected get id %q, got %q", getID, got.ID)
 	}
 
 	listReq := httptest.NewRequest(http.MethodGet, "/categories", nil)
@@ -148,6 +156,7 @@ func TestCategoryHandler_GetUpdateDeleteCategory(t *testing.T) {
 }
 
 func TestCategoryHandler_ReturnsErrors(t *testing.T) {
+	id := uuid.NewString()
 	svc := &fakeCategoryService{
 		getFn: func(ctx context.Context, id string) (appcatalog.CategoryResponse, error) {
 			return appcatalog.CategoryResponse{}, errors.New("boom")
@@ -158,11 +167,32 @@ func TestCategoryHandler_ReturnsErrors(t *testing.T) {
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/categories/abc", nil)
+	req := httptest.NewRequest(http.MethodGet, "/categories/"+id, nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected bad request for generic error, got %d", rec.Code)
+	}
+}
+
+func TestCategoryHandler_GetCategoryRejectsInvalidID(t *testing.T) {
+	svc := &fakeCategoryService{
+		getFn: func(ctx context.Context, id string) (appcatalog.CategoryResponse, error) {
+			t.Fatal("service should not be called for invalid id")
+			return appcatalog.CategoryResponse{}, nil
+		},
+	}
+
+	handler := NewCategoryHandler(svc)
+	mux := http.NewServeMux()
+	handler.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/categories/not-a-uuid", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected bad request for invalid category id, got %d", rec.Code)
 	}
 }

@@ -112,6 +112,14 @@ func loadCategoryAuditRow(t *testing.T, id catalog.CategoryID) categoryAuditRow 
 	return row
 }
 
+func resetCategoryTable(t *testing.T) {
+	t.Helper()
+
+	if _, err := testDB.Exec(`TRUNCATE TABLE catalog_categories CASCADE`); err != nil {
+		t.Fatalf("failed to reset category table: %v", err)
+	}
+}
+
 // TestMain sets up the test database before running integration tests.
 func TestMain(m *testing.M) {
 	ctx := context.Background()
@@ -273,6 +281,99 @@ func TestGetCategory(t *testing.T) {
 	}
 	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
 		t.Fatalf("expected ErrCategoryNotFound, got %v", err)
+	}
+}
+
+// TestListCategories tests retrieving all non-deleted categories.
+func TestListCategories(t *testing.T) {
+	ctx := context.Background()
+	resetCategoryTable(t)
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
+	if err != nil {
+		t.Fatalf("failed to create repository: %v", err)
+	}
+	defer repo.Close()
+
+	userID := domain.ActorID(uuid.New())
+	cats := []*catalog.Category{
+		catalog.NewCategory("Zeta", "Last"),
+		catalog.NewCategory("Alpha", "First"),
+		catalog.NewCategory("Middle", "Middle"),
+	}
+
+	for _, cat := range cats {
+		if err := repo.Save(ctx, *cat, userID); err != nil {
+			t.Fatalf("failed to save category: %v", err)
+		}
+	}
+
+	if err := repo.Delete(ctx, cats[2].ID, userID); err != nil {
+		t.Fatalf("failed to delete category: %v", err)
+	}
+
+	got, err := repo.List(ctx)
+	if err != nil {
+		t.Fatalf("failed to list categories: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 categories, got %d", len(got))
+	}
+	if got[0].Name != "Alpha" || got[1].Name != "Zeta" {
+		t.Fatalf("expected alphabetical order without deleted rows, got %q then %q", got[0].Name, got[1].Name)
+	}
+}
+
+// TestListCategoriesByParent tests retrieving categories by parent relationship.
+func TestListCategoriesByParent(t *testing.T) {
+	ctx := context.Background()
+	resetCategoryTable(t)
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
+	if err != nil {
+		t.Fatalf("failed to create repository: %v", err)
+	}
+	defer repo.Close()
+
+	userID := domain.ActorID(uuid.New())
+	parent := catalog.NewCategory("Parent", "Parent category")
+	if err := repo.Save(ctx, *parent, userID); err != nil {
+		t.Fatalf("failed to save parent category: %v", err)
+	}
+
+	childA := catalog.NewCategory("Beta", "Second")
+	childA.MoveToParent(catalog.ParentCategoryID(parent.ID))
+	if err := repo.Save(ctx, *childA, userID); err != nil {
+		t.Fatalf("failed to save child category: %v", err)
+	}
+
+	childB := catalog.NewCategory("Alpha", "First")
+	childB.MoveToParent(catalog.ParentCategoryID(parent.ID))
+	if err := repo.Save(ctx, *childB, userID); err != nil {
+		t.Fatalf("failed to save child category: %v", err)
+	}
+
+	otherRoot := catalog.NewCategory("Root", "Root category")
+	if err := repo.Save(ctx, *otherRoot, userID); err != nil {
+		t.Fatalf("failed to save unrelated category: %v", err)
+	}
+
+	rootCategories, err := repo.ListByParent(ctx, nil)
+	if err != nil {
+		t.Fatalf("failed to list root categories: %v", err)
+	}
+	if len(rootCategories) != 2 {
+		t.Fatalf("expected 2 root categories, got %d", len(rootCategories))
+	}
+
+	parentID := catalog.ParentCategoryID(parent.ID)
+	children, err := repo.ListByParent(ctx, &parentID)
+	if err != nil {
+		t.Fatalf("failed to list child categories: %v", err)
+	}
+	if len(children) != 2 {
+		t.Fatalf("expected 2 child categories, got %d", len(children))
+	}
+	if children[0].Name != "Alpha" || children[1].Name != "Beta" {
+		t.Fatalf("expected alphabetical child order, got %q then %q", children[0].Name, children[1].Name)
 	}
 }
 

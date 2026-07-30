@@ -22,3 +22,9 @@ var ErrCategoryDeleteFailed = errors.New("category delete failed")
 func NewCategoryDeleteFailedError(err error) error {
 	return fmt.Errorf("%w: %v", ErrCategoryDeleteFailed, err)
 }
+
+var ErrCategoryListFailed = errors.New("category list failed")
+
+func NewCategoryListFailedError(err error) error {
+	return fmt.Errorf("%w: %v", ErrCategoryListFailed, err)
+}

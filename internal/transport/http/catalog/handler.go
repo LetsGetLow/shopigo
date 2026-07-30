@@ -71,7 +71,13 @@ func (h *CategoryHandler) handleGetCategory(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp, err := h.service.GetCategory(r.Context(), r.PathValue("id"))
+	id := r.PathValue("id")
+	if _, err := uuid.Parse(id); err != nil {
+		http.Error(w, "invalid category id", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := h.service.GetCategory(r.Context(), id)
 	if err != nil {
 		writeHandlerError(w, err)
 		return
@@ -168,7 +174,7 @@ func writeHandlerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, appcatalog.ErrCategoryNotFound):
 		http.Error(w, "category not found", http.StatusNotFound)
-	case errors.Is(err, appcatalog.ErrCategorySaveFailed), errors.Is(err, appcatalog.ErrCategoryDeleteFailed):
+	case errors.Is(err, appcatalog.ErrCategorySaveFailed), errors.Is(err, appcatalog.ErrCategoryDeleteFailed), errors.Is(err, appcatalog.ErrCategoryListFailed):
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	default:
 		http.Error(w, err.Error(), http.StatusBadRequest)
