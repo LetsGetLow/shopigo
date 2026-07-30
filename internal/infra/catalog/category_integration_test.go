@@ -3,14 +3,15 @@ package catalog_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
-	shared2 "shopigo/internal/infra/shared"
+	shared "shopigo/internal/infra/shared"
 	"testing"
 	"time"
 
 	"shopigo/internal/domain/catalog"
-	shared "shopigo/internal/domain/shared"
+	domain "shopigo/internal/domain/shared"
 	catrepo "shopigo/internal/infra/catalog"
 	"shopigo/internal/testhelper"
 
@@ -31,7 +32,7 @@ type categoryAuditRow struct {
 	deletedBy uuid.NullUUID
 }
 
-func assertCategoryAuditState(t *testing.T, got *catalog.Category, wantCreatedBy shared.ActorID, wantUpdatedBy *shared.ActorID, wantDeletedBy *shared.ActorID) {
+func assertCategoryAuditState(t *testing.T, got *catalog.Category, wantCreatedBy domain.ActorID, wantUpdatedBy *domain.ActorID, wantDeletedBy *domain.ActorID) {
 	t.Helper()
 
 	if got == nil {
@@ -113,10 +114,10 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 
 	// Load test database config
-	config := shared2.NewPostgresConfig()
+	config := shared.NewPostgresConfig()
 
 	// Connect to admin database to create test DB
-	adminDB, err := shared2.ConnectToAdmin(ctx, config)
+	adminDB, err := shared.ConnectToAdmin(ctx, config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to connect to postgres admin: %v\n", err)
 		os.Exit(1)
@@ -139,14 +140,18 @@ func TestMain(m *testing.M) {
 	defer testDB.Close()
 
 	// Get migrations directory for catalog domain
-	migrationsDir, err := shared2.GetMigrationsDir("catalog")
+	migrationsDir, err := shared.GetMigrationsDir("catalog")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to find migrations: %v\n", err)
+		if errors.Is(err, &shared.NotFound{}) {
+			fmt.Fprintf(os.Stderr, "migrations directory not found: %v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "failed to find migrations: %v\n", err)
+		}
 		os.Exit(1)
 	}
 
 	// Run migrations
-	if err := shared2.RunMigrations(ctx, testDB, migrationsDir); err != nil {
+	if err := shared.RunMigrations(ctx, testDB, migrationsDir); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to run migrations: %v\n", err)
 		os.Exit(1)
 	}
@@ -165,14 +170,14 @@ func TestMain(m *testing.M) {
 // TestSaveCategory tests saving a new category and updating an existing one.
 func TestSaveCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
 	// Test data
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create a new category
 	cat := catalog.NewCategory("Electronics", "Electronics and gadgets")
@@ -225,13 +230,13 @@ func TestSaveCategory(t *testing.T) {
 // TestGetCategory tests retrieving a category by ID.
 func TestGetCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create and save a category
 	cat := catalog.NewCategory("Books", "Books and literature")
@@ -268,13 +273,13 @@ func TestGetCategory(t *testing.T) {
 // TestGetDeletedCategory tests that deleted categories are not retrieved.
 func TestGetDeletedCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create and save a category
 	cat := catalog.NewCategory("Toys", "Toys and games")
@@ -308,13 +313,13 @@ func TestGetDeletedCategory(t *testing.T) {
 // TestDeleteCategory tests soft-deleting a category.
 func TestDeleteCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create and save a category
 	cat := catalog.NewCategory("Sports", "Sports and fitness")
@@ -354,13 +359,13 @@ func TestDeleteCategory(t *testing.T) {
 // TestCategoryWithParent tests saving and retrieving a category with a parent.
 func TestCategoryWithParent(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create and save parent category
 	parent := catalog.NewCategory("Computers", "Computers and peripherals")
@@ -396,13 +401,13 @@ func TestCategoryWithParent(t *testing.T) {
 // TestSaveAndDeleteMultiple tests saving and deleting multiple categories.
 func TestSaveAndDeleteMultiple(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create and save multiple categories
 	categories := []*catalog.Category{
@@ -464,13 +469,13 @@ func TestSaveAndDeleteMultiple(t *testing.T) {
 // TestSaveWithNonExistentParent tests that saving a category with a non-existent parent fails.
 func TestSaveWithNonExistentParent(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 
 	// Create a category with a non-existent parent
 	cat := catalog.NewCategory("Child", "Orphan category")
@@ -487,13 +492,13 @@ func TestSaveWithNonExistentParent(t *testing.T) {
 // TestDeleteNonExistentCategory tests that deleting a non-existent category fails gracefully.
 func TestDeleteNonExistentCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared2.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
 	defer repo.Close()
 
-	userID := shared.ActorID(uuid.New())
+	userID := domain.ActorID(uuid.New())
 	nonExistentID := catalog.CategoryID(uuid.New())
 
 	// Delete a category that doesn't exist - should not fail (idempotent)
