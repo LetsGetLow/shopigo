@@ -59,6 +59,7 @@ func GetMigrationsDir(domain string) (string, error) {
 		return "", &OSOperation{Err: err}
 	}
 
+	// TODO: this logic needs to be reworked for production
 	current := wd
 	for {
 		goModPath := filepath.Join(current, "go.mod")
@@ -79,7 +80,7 @@ func GetMigrationsDir(domain string) (string, error) {
 		current = parent
 	}
 
-	return "", &NotFound{Message: "go.mod not found in any parent directory"}
+	return "", NewNotFound("go.mod not found in any parent directory")
 }
 
 // RunMigrations executes SQL migration files from the given directory.

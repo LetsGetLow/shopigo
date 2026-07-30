@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -32,11 +33,19 @@ func (e FileSystem) Error() string {
 	return fmt.Sprintf("file system error: %s", e.Err.Error())
 }
 
-// NotFound is an error type used when a required resource is not found, e.g., a file or DB row.
-type NotFound struct {
-	Message string
+// ErrNotFound is a sentinel error used when a required resource is not found.
+var ErrNotFound = errors.New("not found")
+
+// NewNotFound wraps ErrNotFound with additional context while preserving errors.Is checks.
+func NewNotFound(message string) error {
+	if message == "" {
+		return ErrNotFound
+	}
+	return fmt.Errorf("%w: %s", ErrNotFound, message)
 }
 
-func (e NotFound) Error() string {
-	return fmt.Sprintf("not found: %s", e.Message)
+var ErrSqlExecutionFailed = errors.New("sql execution failed")
+
+func NewSqlExecutionFailedError(err error) error {
+	return fmt.Errorf("%w: %v", ErrSqlExecutionFailed, err)
 }

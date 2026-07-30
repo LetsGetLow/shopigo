@@ -91,10 +91,11 @@ func loadCategoryAuditRow(t *testing.T, id catalog.CategoryID) categoryAuditRow 
 	t.Helper()
 
 	var row categoryAuditRow
+	const query = `SELECT created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
+		 FROM ` + categoryTable + `
+		 WHERE category_id = $1`
 	err := testDB.QueryRow(
-		`SELECT created_at, created_by, updated_at, updated_by, deleted_at, deleted_by
-		 FROM `+categoryTable+`
-		 WHERE category_id = $1`,
+		query,
 		uuid.UUID(id),
 	).Scan(
 		&row.createdAt,
@@ -144,7 +145,7 @@ func TestMain(m *testing.M) {
 	// Get migrations directory for catalog domain
 	migrationsDir, err := shared.GetMigrationsDir("catalog")
 	if err != nil {
-		if errors.Is(err, &shared.NotFound{}) {
+		if errors.Is(err, shared.ErrNotFound) {
 			fmt.Fprintf(os.Stderr, "migrations directory not found: %v\n", err)
 		} else {
 			fmt.Fprintf(os.Stderr, "failed to find migrations: %v\n", err)
@@ -270,6 +271,9 @@ func TestGetCategory(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-existent category, got nil")
 	}
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Fatalf("expected ErrCategoryNotFound, got %v", err)
+	}
 }
 
 // TestGetDeletedCategory tests that deleted categories are not retrieved.
@@ -305,10 +309,13 @@ func TestGetDeletedCategory(t *testing.T) {
 		t.Fatalf("expected deleted by %v, got %v", userID, row.deletedBy.UUID)
 	}
 
-	// Try to retrieve it - should fail
+	// Try to retrieve it - should fail with ErrCategoryNotFound
 	_, err = repo.Get(ctx, cat.ID)
 	if err == nil {
 		t.Fatal("expected error for deleted category, got nil")
+	}
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Fatalf("expected ErrCategoryNotFound, got %v", err)
 	}
 }
 
@@ -355,6 +362,9 @@ func TestDeleteCategory(t *testing.T) {
 	_, err = repo.Get(ctx, cat.ID)
 	if err == nil {
 		t.Fatal("expected error after deletion, got nil")
+	}
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Fatalf("expected ErrCategoryNotFound, got %v", err)
 	}
 }
 
@@ -458,6 +468,9 @@ func TestSaveAndDeleteMultiple(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for deleted category")
 	}
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Fatalf("expected ErrCategoryNotFound, got %v", err)
+	}
 
 	// Verify others still exist
 	for i := 1; i < len(categories); i++ {
@@ -489,6 +502,9 @@ func TestSaveWithNonExistentParent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-existent parent, got nil")
 	}
+	if !errors.Is(err, catrepo.ErrCategorySaveFailed) {
+		t.Fatalf("expected ErrCategorySaveFailed, got %v", err)
+	}
 }
 
 // TestDeleteNonExistentCategory tests that deleting a non-existent category fails gracefully.
@@ -507,5 +523,122 @@ func TestDeleteNonExistentCategory(t *testing.T) {
 	err = repo.Delete(ctx, nonExistentID, userID)
 	if err != nil {
 		t.Fatalf("expected delete to be idempotent, got error: %v", err)
+	}
+}
+
+// TestErrorHandling_GetNonExistentCategoryReturnsCorrectError verifies error type and sentinel for Get.
+func TestErrorHandling_GetNonExistentCategoryReturnsCorrectError(t *testing.T) {
+	ctx := context.Background()
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	if err != nil {
+		t.Fatalf("failed to create repository: %v", err)
+	}
+	defer repo.Close()
+
+	nonExistentID := catalog.CategoryID(uuid.New())
+	_, err = repo.Get(ctx, nonExistentID)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	// Test sentinel error with errors.Is
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Errorf("expected error to contain ErrCategoryNotFound, got: %v", err)
+	}
+
+	// Verify error message is informative
+	errMsg := err.Error()
+	if errMsg == "" {
+		t.Error("expected error message, got empty string")
+	}
+}
+
+// TestErrorHandling_SaveCategoryWithInvalidDataReturnsCorrectError verifies error type for Save.
+func TestErrorHandling_SaveCategoryWithInvalidDataReturnsCorrectError(t *testing.T) {
+	ctx := context.Background()
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	if err != nil {
+		t.Fatalf("failed to create repository: %v", err)
+	}
+	defer repo.Close()
+
+	userID := domain.ActorID(uuid.New())
+
+	// Create a category with a non-existent parent (will fail FK constraint)
+	cat := catalog.NewCategory("Invalid Child", "A child with no valid parent")
+	invalidParentID := catalog.ParentCategoryID(uuid.New())
+	cat.MoveToParent(invalidParentID)
+
+	err = repo.Save(ctx, *cat, userID)
+
+	if err == nil {
+		t.Fatal("expected error for constraint violation, got nil")
+	}
+
+	// Test sentinel error with errors.Is
+	if !errors.Is(err, catrepo.ErrCategorySaveFailed) {
+		t.Errorf("expected error to contain ErrCategorySaveFailed, got: %v", err)
+	}
+}
+
+// TestErrorHandling_DeleteCategoryReturnsCorrectError verifies error behavior for Delete.
+func TestErrorHandling_DeleteCategoryReturnsCorrectError(t *testing.T) {
+	ctx := context.Background()
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	if err != nil {
+		t.Fatalf("failed to create repository: %v", err)
+	}
+	defer repo.Close()
+
+	userID := domain.ActorID(uuid.New())
+	cat := catalog.NewCategory("Deletable", "A category to delete")
+
+	// Save the category
+	if err := repo.Save(ctx, *cat, userID); err != nil {
+		t.Fatalf("failed to save category: %v", err)
+	}
+
+	// Delete should succeed
+	err = repo.Delete(ctx, cat.ID, userID)
+	if err != nil {
+		t.Fatalf("expected delete to succeed, got error: %v", err)
+	}
+
+	// Try to get it - should fail with ErrCategoryNotFound
+	_, err = repo.Get(ctx, cat.ID)
+	if err == nil {
+		t.Fatal("expected error after delete, got nil")
+	}
+
+	if !errors.Is(err, catrepo.ErrCategoryNotFound) {
+		t.Errorf("expected ErrCategoryNotFound after delete, got: %v", err)
+	}
+}
+
+// TestErrorHandling_RepositoryConnectionErrorUsesCorrectType verifies connection error type.
+func TestErrorHandling_RepositoryConnectionErrorUsesCorrectType(t *testing.T) {
+	ctx := context.Background()
+
+	// Try to connect with invalid connection string
+	invalidConnStr := "postgresql://invalid:invalid@localhost:99999/invalid?sslmode=disable"
+	_, err := catrepo.NewPostgresCategoryRepository(ctx, invalidConnStr)
+
+	if err == nil {
+		t.Fatal("expected connection error, got nil")
+	}
+
+	// Verify it's a custom ConnectionFailed type
+	var connErr *shared.ConnectionFailed
+	if !errors.As(err, &connErr) {
+		t.Fatalf("expected ConnectionFailed error type, got: %T", err)
+	}
+
+	if connErr.ConnectionName != "postgres" {
+		t.Errorf("expected connection name 'postgres', got: %q", connErr.ConnectionName)
+	}
+
+	if connErr.Err == nil {
+		t.Error("expected underlying error to be set")
 	}
 }
