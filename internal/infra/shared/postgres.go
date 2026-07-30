@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// PostgresConfig holds test database connection settings.
+// PostgresConfig holds PostgreSQL connection settings.
 type PostgresConfig struct {
 	Host     string
 	Port     string
@@ -20,8 +20,19 @@ type PostgresConfig struct {
 	DB       string
 }
 
-// NewPostgresConfig loads config from environment variables.
+// NewPostgresConfig loads runtime config from environment variables.
 func NewPostgresConfig() PostgresConfig {
+	return PostgresConfig{
+		Host:     shared.LookupConfigValueWithFallback("POSTGRES_HOST", "localhost"),
+		Port:     shared.LookupConfigValueWithFallback("POSTGRES_PORT", "15432"),
+		User:     shared.LookupConfigValueWithFallback("POSTGRES_USER", "shopigo"),
+		Password: shared.LookupConfigValueWithFallback("POSTGRES_PASSWORD", "password"),
+		DB:       shared.LookupConfigValueWithFallback("POSTGRES_DB", "shopigo"),
+	}
+}
+
+// NewPostgresConfigTest loads test config from environment variables.
+func NewPostgresConfigTest() PostgresConfig {
 	return PostgresConfig{
 		Host:     shared.LookupConfigValueWithFallback("POSTGRES_HOST", "localhost"),
 		Port:     shared.LookupConfigValueWithFallback("POSTGRES_PORT", "15432"),

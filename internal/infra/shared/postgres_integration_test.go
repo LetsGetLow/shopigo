@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	config := shared.NewPostgresConfig()
+	config := shared.NewPostgresConfigTest()
 
 	adminDB, err := shared.ConnectToAdmin(ctx, config)
 	if err != nil {
@@ -104,7 +104,7 @@ func TestPostgresConfig(t *testing.T) {
 		unsetEnv(t, "POSTGRES_PORT")
 		unsetEnv(t, "POSTGRES_USER")
 		unsetEnv(t, "POSTGRES_PASSWORD")
-		unsetEnv(t, "POSTGRES_DB_TEST")
+		unsetEnv(t, "POSTGRES_DB")
 
 		cfg := shared.NewPostgresConfig()
 
@@ -113,7 +113,7 @@ func TestPostgresConfig(t *testing.T) {
 			Port:     "15432",
 			User:     "shopigo",
 			Password: "password",
-			DB:       "shopigo_test",
+			DB:       "shopigo",
 		}
 
 		if cfg != want {
@@ -126,7 +126,7 @@ func TestPostgresConfig(t *testing.T) {
 		t.Setenv("POSTGRES_PORT", "5433")
 		t.Setenv("POSTGRES_USER", "tester")
 		t.Setenv("POSTGRES_PASSWORD", "secret")
-		t.Setenv("POSTGRES_DB_TEST", "tester_test")
+		t.Setenv("POSTGRES_DB", "tester")
 
 		cfg := shared.NewPostgresConfig()
 
@@ -135,7 +135,29 @@ func TestPostgresConfig(t *testing.T) {
 			Port:     "5433",
 			User:     "tester",
 			Password: "secret",
-			DB:       "tester_test",
+			DB:       "tester",
+		}
+
+		if cfg != want {
+			t.Fatalf("expected config %+v, got %+v", want, cfg)
+		}
+	})
+
+	t.Run("uses test db helper when env is unset", func(t *testing.T) {
+		unsetEnv(t, "POSTGRES_HOST")
+		unsetEnv(t, "POSTGRES_PORT")
+		unsetEnv(t, "POSTGRES_USER")
+		unsetEnv(t, "POSTGRES_PASSWORD")
+		unsetEnv(t, "POSTGRES_DB_TEST")
+
+		cfg := shared.NewPostgresConfigTest()
+
+		want := shared.PostgresConfig{
+			Host:     "localhost",
+			Port:     "15432",
+			User:     "shopigo",
+			Password: "password",
+			DB:       "shopigo_test",
 		}
 
 		if cfg != want {
@@ -231,7 +253,8 @@ func TestRunMigrations(t *testing.T) {
 		}
 
 		t.Cleanup(func() {
-			_, _ = testDB.ExecContext(ctx, "DROP TABLE IF EXISTS "+tableName)
+			query := "DROP TABLE IF EXISTS " + tableName
+			_, _ = testDB.ExecContext(ctx, query)
 		})
 
 		if err := shared.RunMigrations(ctx, testDB, dir); err != nil {
@@ -271,7 +294,7 @@ func TestConnectToAdmin(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		db, err := shared.ConnectToAdmin(ctx, shared.NewPostgresConfig())
+		db, err := shared.ConnectToAdmin(ctx, shared.NewPostgresConfigTest())
 		if err != nil {
 			t.Fatalf("expected admin connection, got error: %v", err)
 		}
@@ -314,7 +337,7 @@ func TestConnectContext(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		db, err := shared.NewPostgresConfig().ConnectContext(ctx)
+		db, err := shared.NewPostgresConfigTest().ConnectContext(ctx)
 		if err != nil {
 			t.Fatalf("expected test database connection, got error: %v", err)
 		}

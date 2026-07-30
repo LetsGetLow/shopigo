@@ -1,4 +1,4 @@
-CREATE TABLE catalog_categories (
+CREATE TABLE IF NOT EXISTS catalog_categories (
     category_id UUID PRIMARY KEY,
     parent_id UUID REFERENCES catalog_categories (category_id),
     name TEXT NOT NULL,

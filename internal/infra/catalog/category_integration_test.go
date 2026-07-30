@@ -117,7 +117,7 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 
 	// Load test database config
-	config := shared.NewPostgresConfig()
+	config := shared.NewPostgresConfigTest()
 
 	// Connect to admin database to create test DB
 	adminDB, err := shared.ConnectToAdmin(ctx, config)
@@ -173,7 +173,7 @@ func TestMain(m *testing.M) {
 // TestSaveCategory tests saving a new category and updating an existing one.
 func TestSaveCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -233,7 +233,7 @@ func TestSaveCategory(t *testing.T) {
 // TestGetCategory tests retrieving a category by ID.
 func TestGetCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestGetCategory(t *testing.T) {
 // TestGetDeletedCategory tests that deleted categories are not retrieved.
 func TestGetDeletedCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -322,7 +322,7 @@ func TestGetDeletedCategory(t *testing.T) {
 // TestDeleteCategory tests soft-deleting a category.
 func TestDeleteCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -371,7 +371,7 @@ func TestDeleteCategory(t *testing.T) {
 // TestCategoryWithParent tests saving and retrieving a category with a parent.
 func TestCategoryWithParent(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -413,7 +413,7 @@ func TestCategoryWithParent(t *testing.T) {
 // TestSaveAndDeleteMultiple tests saving and deleting multiple categories.
 func TestSaveAndDeleteMultiple(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -484,7 +484,7 @@ func TestSaveAndDeleteMultiple(t *testing.T) {
 // TestSaveWithNonExistentParent tests that saving a category with a non-existent parent fails.
 func TestSaveWithNonExistentParent(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -510,7 +510,7 @@ func TestSaveWithNonExistentParent(t *testing.T) {
 // TestDeleteNonExistentCategory tests that deleting a non-existent category fails gracefully.
 func TestDeleteNonExistentCategory(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -529,7 +529,7 @@ func TestDeleteNonExistentCategory(t *testing.T) {
 // TestErrorHandling_GetNonExistentCategoryReturnsCorrectError verifies error type and sentinel for Get.
 func TestErrorHandling_GetNonExistentCategoryReturnsCorrectError(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -557,7 +557,7 @@ func TestErrorHandling_GetNonExistentCategoryReturnsCorrectError(t *testing.T) {
 // TestErrorHandling_SaveCategoryWithInvalidDataReturnsCorrectError verifies error type for Save.
 func TestErrorHandling_SaveCategoryWithInvalidDataReturnsCorrectError(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
@@ -585,7 +585,7 @@ func TestErrorHandling_SaveCategoryWithInvalidDataReturnsCorrectError(t *testing
 // TestErrorHandling_DeleteCategoryReturnsCorrectError verifies error behavior for Delete.
 func TestErrorHandling_DeleteCategoryReturnsCorrectError(t *testing.T) {
 	ctx := context.Background()
-	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfig().ConnectionString())
+	repo, err := catrepo.NewPostgresCategoryRepository(ctx, shared.NewPostgresConfigTest().ConnectionString())
 	if err != nil {
 		t.Fatalf("failed to create repository: %v", err)
 	}
