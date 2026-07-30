@@ -42,10 +42,7 @@ func (c PostgresConfig) ConnectionString() string {
 func (c PostgresConfig) ConnectContext(ctx context.Context) (*sqlx.DB, error) {
 	db, err := sqlx.ConnectContext(ctx, "postgres", c.ConnectionString())
 	if err != nil {
-		return nil, &ConnectionFailed{
-			ConnectionName: "postgres",
-			Err:            err,
-		}
+		return nil, NewConnectionFailedError("postgres", err)
 	}
 	return db, nil
 }
@@ -56,7 +53,7 @@ func (c PostgresConfig) ConnectContext(ctx context.Context) (*sqlx.DB, error) {
 func GetMigrationsDir(domain string) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return "", &OSOperation{Err: err}
+		return "", NewOSOperationError(err)
 	}
 
 	// TODO: this logic needs to be reworked for production
@@ -69,7 +66,7 @@ func GetMigrationsDir(domain string) (string, error) {
 			if info, err := os.Stat(migrationsDir); err == nil && info.IsDir() {
 				return migrationsDir, nil
 			}
-			return "", &FileSystem{Err: fmt.Errorf("migrations/%s not found at %s", domain, migrationsDir)}
+			return "", NewFileSystemError(fmt.Errorf("migrations/%s not found at %s", domain, migrationsDir))
 		}
 
 		parent := filepath.Dir(current)
@@ -80,7 +77,7 @@ func GetMigrationsDir(domain string) (string, error) {
 		current = parent
 	}
 
-	return "", NewNotFound("go.mod not found in any parent directory")
+	return "", NewNotFoundError("go.mod not found in any parent directory")
 }
 
 // RunMigrations executes SQL migration files from the given directory.
@@ -88,7 +85,7 @@ func GetMigrationsDir(domain string) (string, error) {
 func RunMigrations(ctx context.Context, db *sqlx.DB, migrationsDir string) error {
 	entries, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		return &FileSystem{Err: fmt.Errorf("failed to read migrations dir: %w", err)}
+		return NewFileSystemError(fmt.Errorf("failed to read migrations dir: %w", err))
 	}
 
 	for _, entry := range entries {
@@ -96,11 +93,11 @@ func RunMigrations(ctx context.Context, db *sqlx.DB, migrationsDir string) error
 			path := filepath.Join(migrationsDir, entry.Name())
 			content, err := os.ReadFile(path)
 			if err != nil {
-				return &FileSystem{Err: fmt.Errorf("failed to read migration %s: %w", entry.Name(), err)}
+				return NewFileSystemError(fmt.Errorf("failed to read migration %s: %w", entry.Name(), err))
 			}
 
 			if _, err := db.ExecContext(ctx, string(content)); err != nil {
-				return &FileSystem{Err: fmt.Errorf("failed to execute migration %s: %w", entry.Name(), err)}
+				return NewSqlExecutionFailedError(fmt.Errorf("failed to execute migration %s: %w", entry.Name(), err))
 			}
 		}
 	}
@@ -116,10 +113,7 @@ func ConnectToAdmin(ctx context.Context, config PostgresConfig) (*sqlx.DB, error
 
 	db, err := sqlx.ConnectContext(ctx, "postgres", adminDSN)
 	if err != nil {
-		return nil, &ConnectionFailed{
-			ConnectionName: "postgres admin",
-			Err:            err,
-		}
+		return nil, NewConnectionFailedError("postgres admin", err)
 	}
 
 	return db, nil

@@ -11,33 +11,38 @@ type ConnectionFailed struct {
 	Err            error
 }
 
+func NewConnectionFailedError(connectionName string, err error) error {
+	return &ConnectionFailed{
+		ConnectionName: connectionName,
+		Err:            err,
+	}
+}
+
 func (e ConnectionFailed) Error() string {
 	return fmt.Sprintf("failed to connect to %s: %s", e.ConnectionName, e.Err.Error())
 }
 
-// OSOperation is used for OS related errors, e.g., getting current working directory.
-type OSOperation struct {
-	Err error
+// ErrOSOperation is a sentinel error used for OS related errors, e.g., getting current working directory.
+var ErrOSOperation = errors.New("os operation error")
+
+// NewOSOperationError wraps ErrOSOperation with the underlying error while preserving errors.Is checks.
+func NewOSOperationError(err error) error {
+	return fmt.Errorf("%w: %v", ErrOSOperation, err)
 }
 
-func (e OSOperation) Error() string {
-	return fmt.Sprintf("os operation error: %s", e.Err.Error())
-}
+// ErrFileSystem is a sentinel error used for all file system related errors, e.g., reading/writing files.
+var ErrFileSystem = errors.New("file system error")
 
-// FileSystem is used for all file system related errors, e.g., reading/writing files.
-type FileSystem struct {
-	Err error
-}
-
-func (e FileSystem) Error() string {
-	return fmt.Sprintf("file system error: %s", e.Err.Error())
+// NewFileSystemError wraps ErrFileSystem with the underlying error while preserving errors.Is checks.
+func NewFileSystemError(err error) error {
+	return fmt.Errorf("%w: %v", ErrFileSystem, err)
 }
 
 // ErrNotFound is a sentinel error used when a required resource is not found.
 var ErrNotFound = errors.New("not found")
 
-// NewNotFound wraps ErrNotFound with additional context while preserving errors.Is checks.
-func NewNotFound(message string) error {
+// NewNotFoundError wraps ErrNotFound with additional context while preserving errors.Is checks.
+func NewNotFoundError(message string) error {
 	if message == "" {
 		return ErrNotFound
 	}
