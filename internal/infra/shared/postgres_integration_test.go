@@ -69,6 +69,7 @@ func unsetEnv(t *testing.T, key string) {
 		t.Fatalf("failed to unset %s: %v", key, err)
 	}
 
+	// revert environment variable
 	t.Cleanup(func() {
 		if existed {
 			if err := os.Setenv(key, old); err != nil {
