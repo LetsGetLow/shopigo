@@ -99,7 +99,7 @@ func newServer(ctx context.Context) (*http.Server, *infraCatalog.PostgresCategor
 
 	return &http.Server{
 		Addr:              httpAddr(),
-		Handler:           httptransport.NewCategoryRouter(handler),
+		Handler:           httptransport.NewRouter(handler),
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
