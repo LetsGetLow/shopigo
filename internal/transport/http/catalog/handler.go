@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	appcatalog "shopigo/internal/app/catalog"
-	domainshared "shopigo/internal/domain/shared"
+	domainShared "shopigo/internal/domain/shared"
+	transportHTTP "shopigo/internal/transport/http"
 
 	"github.com/google/uuid"
 )
@@ -15,9 +16,9 @@ import (
 const actorHeader = "X-Actor-ID"
 
 type service interface {
-	CreateCategory(ctx context.Context, req appcatalog.CreateCategoryRequest, user domainshared.ActorID) (appcatalog.CreateCategoryResponse, error)
-	UpdateCategory(ctx context.Context, req appcatalog.UpdateCategoryRequest, user domainshared.ActorID) (appcatalog.UpdateCategoryResponse, error)
-	DeleteCategory(ctx context.Context, req appcatalog.DeleteCategoryRequest, user domainshared.ActorID) (appcatalog.DeleteCategoryResponse, error)
+	CreateCategory(ctx context.Context, req appcatalog.CreateCategoryRequest, user domainShared.ActorID) (appcatalog.CreateCategoryResponse, error)
+	UpdateCategory(ctx context.Context, req appcatalog.UpdateCategoryRequest, user domainShared.ActorID) (appcatalog.UpdateCategoryResponse, error)
+	DeleteCategory(ctx context.Context, req appcatalog.DeleteCategoryRequest, user domainShared.ActorID) (appcatalog.DeleteCategoryResponse, error)
 	GetCategory(ctx context.Context, id string) (appcatalog.CategoryResponse, error)
 	ListCategories(ctx context.Context) ([]appcatalog.CategoryResponse, error)
 }
@@ -46,13 +47,13 @@ func (h *CategoryHandler) handleCreateCategory(w http.ResponseWriter, r *http.Re
 
 	userID, ok := actorIDFromRequest(r)
 	if !ok {
-		http.Error(w, "missing or invalid actor id", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	var req appcatalog.CreateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgInvalidRequestBody, http.StatusBadRequest)
 		return
 	}
 
@@ -73,7 +74,7 @@ func (h *CategoryHandler) handleGetCategory(w http.ResponseWriter, r *http.Reque
 
 	id := r.PathValue("id")
 	if _, err := uuid.Parse(id); err != nil {
-		http.Error(w, "invalid category id", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgInvalidCategoryID, http.StatusBadRequest)
 		return
 	}
 
@@ -109,13 +110,13 @@ func (h *CategoryHandler) handleUpdateCategory(w http.ResponseWriter, r *http.Re
 
 	userID, ok := actorIDFromRequest(r)
 	if !ok {
-		http.Error(w, "missing or invalid actor id", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
 	var req appcatalog.UpdateCategoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgInvalidRequestBody, http.StatusBadRequest)
 		return
 	}
 	req.ID = r.PathValue("id")
@@ -137,7 +138,7 @@ func (h *CategoryHandler) handleDeleteCategory(w http.ResponseWriter, r *http.Re
 
 	userID, ok := actorIDFromRequest(r)
 	if !ok {
-		http.Error(w, "missing or invalid actor id", http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgUnauthorized, http.StatusUnauthorized)
 		return
 	}
 
@@ -150,18 +151,9 @@ func (h *CategoryHandler) handleDeleteCategory(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func actorIDFromRequest(r *http.Request) (domainshared.ActorID, bool) {
-	raw := r.Header.Get(actorHeader)
-	if raw == "" {
-		return domainshared.ActorID(uuid.Nil), false
-	}
-
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return domainshared.ActorID(uuid.Nil), false
-	}
-
-	return domainshared.ActorID(id), true
+func actorIDFromRequest(r *http.Request) (domainShared.ActorID, bool) {
+	return domainShared.ActorID(uuid.New()), true
+	// TODO: Extract the actor ID from JWT token.
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -171,12 +163,13 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeHandlerError(w http.ResponseWriter, err error) {
+	// TODO: write more detailed error responses based on the context later
 	switch {
 	case errors.Is(err, appcatalog.ErrCategoryNotFound):
-		http.Error(w, "category not found", http.StatusNotFound)
+		http.Error(w, transportHTTP.MsgNotFound, http.StatusNotFound)
 	case errors.Is(err, appcatalog.ErrCategorySaveFailed), errors.Is(err, appcatalog.ErrCategoryDeleteFailed), errors.Is(err, appcatalog.ErrCategoryListFailed):
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		http.Error(w, transportHTTP.MsgInternalServerError, http.StatusInternalServerError)
 	default:
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, transportHTTP.MsgBadRequest, http.StatusBadRequest)
 	}
 }

@@ -2,8 +2,6 @@ package httptransport
 
 import (
 	"net/http"
-
-	cataloghttp "shopigo/internal/transport/http/catalog"
 )
 
 // RouteRegistrar registers routes on a ServeMux.
@@ -25,9 +23,4 @@ func NewRouter(registrars ...RouteRegistrar) http.Handler {
 	})
 
 	return mux
-}
-
-// NewCategoryRouter is a convenience for the category handler.
-func NewCategoryRouter(handler *cataloghttp.CategoryHandler) http.Handler {
-	return NewRouter(handler)
 }

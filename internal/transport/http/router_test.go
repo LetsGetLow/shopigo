@@ -1,7 +1,6 @@
 package httptransport
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,38 +8,18 @@ import (
 	"testing"
 
 	appcatalog "shopigo/internal/app/catalog"
-	domainshared "shopigo/internal/domain/shared"
-	cataloghttp "shopigo/internal/transport/http/catalog"
 )
 
-type routerCategoryService struct{}
+type fakeRegistrar struct{}
 
-func (routerCategoryService) CreateCategory(ctx context.Context, req appcatalog.CreateCategoryRequest, user domainshared.ActorID) (appcatalog.CreateCategoryResponse, error) {
-	return appcatalog.CreateCategoryResponse{
-		Category: appcatalog.CategoryResponse{ID: "cat-1", Name: req.Name, Description: req.Description},
-	}, nil
-}
-
-func (routerCategoryService) UpdateCategory(ctx context.Context, req appcatalog.UpdateCategoryRequest, user domainshared.ActorID) (appcatalog.UpdateCategoryResponse, error) {
-	return appcatalog.UpdateCategoryResponse{
-		Category: appcatalog.CategoryResponse{ID: req.ID, Name: req.Name, Description: req.Description},
-	}, nil
-}
-
-func (routerCategoryService) DeleteCategory(ctx context.Context, req appcatalog.DeleteCategoryRequest, user domainshared.ActorID) (appcatalog.DeleteCategoryResponse, error) {
-	return appcatalog.DeleteCategoryResponse{ID: req.ID}, nil
-}
-
-func (routerCategoryService) GetCategory(ctx context.Context, id string) (appcatalog.CategoryResponse, error) {
-	return appcatalog.CategoryResponse{ID: id, Name: "Books", Description: "Reading"}, nil
-}
-
-func (routerCategoryService) ListCategories(ctx context.Context) ([]appcatalog.CategoryResponse, error) {
-	return []appcatalog.CategoryResponse{{ID: "root", Name: "Root"}}, nil
+func (fakeRegistrar) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /categories", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode([]appcatalog.CategoryResponse{{ID: "root", Name: "Root"}})
+	})
 }
 
 func TestNewRouterPrefixesCategoryRoutesWithAPIV1(t *testing.T) {
-	router := NewCategoryRouter(cataloghttp.NewCategoryHandler(routerCategoryService{}))
+	router := NewRouter(fakeRegistrar{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/categories", nil)
 	rec := httptest.NewRecorder()
@@ -61,7 +40,7 @@ func TestNewRouterPrefixesCategoryRoutesWithAPIV1(t *testing.T) {
 }
 
 func TestNewRouterRedirectsAPIV1Root(t *testing.T) {
-	router := NewCategoryRouter(cataloghttp.NewCategoryHandler(routerCategoryService{}))
+	router := NewRouter(fakeRegistrar{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1", nil)
 	rec := httptest.NewRecorder()
